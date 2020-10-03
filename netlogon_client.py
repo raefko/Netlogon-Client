@@ -41,6 +41,18 @@ def authenticate(rpc_con, user):
         Server_Challenge = status['ServerChallenge']
         print("Client_Challenge : ", Client_Challenge)
         print("Server_Challenge : ", Server_Challenge)
+    Session_Key = nrpc.ComputeSessionKeyAES(user.account_password, Client_Challenge, Server_Challenge)
+    print("Session_Key : ", Session_Key)
+    Credential = nrpc.ComputeNetlogonCredentialAES(Client_Challenge, Session_Key)
+    print("Credential : ", Credential)
+    negotiateFlags = 0x212fffff
+    try:
+        resp = nrpc.hNetrServerAuthenticate3(rpc_con, NULL, user.account_name,
+         nrpc.NETLOGON_SECURE_CHANNEL_TYPE.ServerSecureChannel, user.computer_name, Credential, negotiateFlags)
+        print(resp)
+    except Exception as e:
+        fail(f'Unexpected error code from DC: {e}.')
+
 
 def InitiateSecureChannel(user):
     rpc_con = ConnectRPCServer(user.dc_ip)
