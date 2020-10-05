@@ -50,6 +50,7 @@ def Menu():
     while(True):
         print("         __Netlogon_Client__")
         print("_________________________________________")
+        #fixme add menu to call netlogon functions
         inp = input("Press a key")
         sys.exit(1)
 
@@ -68,7 +69,7 @@ def authenticate(rpc_con, user):
     print("Session_Key : ", SessionKey)
     Credential = nrpc.ComputeNetlogonCredentialAES(Client_Challenge, SessionKey)
     print("Credential : ", Credential)
-    negotiateFlags = 0x613fffff
+    negotiateFlags = 0x212fffff
     try:
         resp = nrpc.hNetrServerAuthenticate3(rpc_con, user.dc_name + '\x00', user.account_name  + '\x00',
         nrpc.NETLOGON_SECURE_CHANNEL_TYPE.ServerSecureChannel, user.computer_name + '\x00', Credential, negotiateFlags)
