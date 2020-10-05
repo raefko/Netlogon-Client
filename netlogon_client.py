@@ -101,7 +101,7 @@ def InitiateSecureChannel(user):
 
 def main():
     if (len(sys.argv) != 5):
-        print('Usage: netlogon_client.py <dc-name> <computer_name> <account_name> <account_password> <dc-ip>\n')
+        print('Usage: netlogon_client.py <dc-name> <account_name> <account_password> <dc-ip>\n')
         print('Note: dc-name should be the (NetBIOS) computer name of the domain controller.')
         sys.exit(1)
     else:
