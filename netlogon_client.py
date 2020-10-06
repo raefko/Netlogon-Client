@@ -56,7 +56,6 @@ def Menu():
 
 def authenticate(rpc_con, user):
     Client_Challenge = bytes(random.getrandbits(8) for i in range(8))
-    #print(len(Client_Challenge))
     status = nrpc.hNetrServerReqChallenge(rpc_con, NULL, user.computer_name + '\x00', Client_Challenge)
     if (status == None or status['ErrorCode'] != 0):
         fail(f'Error NetrServerReqChallenge')
@@ -65,9 +64,7 @@ def authenticate(rpc_con, user):
         Server_Challenge = status['ServerChallenge']
         print("Client_Challenge : ", Client_Challenge)
         print("Server_Challenge : ", Server_Challenge)
-    #pwd = hashlib.new('md4', user.account_password.encode('utf-16le')).digest()
     SessionKey = nrpc.ComputeSessionKeyAES(user.account_password, Client_Challenge, Server_Challenge, bytearray.fromhex(user.account_password))
-    #SessionKey = nrpc.ComputeSessionKeyAES(user.account_password, Client_Challenge, Server_Challenge, bytearray.fromhex(user.account_password))
     print("Session_Key : ", SessionKey)
     Credential = nrpc.ComputeNetlogonCredentialAES(Client_Challenge, SessionKey)
     print("Credential : ", Credential)
@@ -75,13 +72,8 @@ def authenticate(rpc_con, user):
     try:
         resp = nrpc.hNetrServerAuthenticate3(rpc_con, user.dc_name + '\x00', user.account_name  + '\x00',
         nrpc.NETLOGON_SECURE_CHANNEL_TYPE.WorkstationSecureChannel, user.computer_name + '\x00', Credential, negotiateFlags)
-        #print(resp)
-        #print(StoredCredential)
         Authenticator = ComputeNetlogonAuthenticator(Credential, SessionKey)
-
-        #print(authenticator)
         resp = nrpc.hNetrLogonGetCapabilities(rpc_con, user.dc_name, user.computer_name, Authenticator)
-        #print(resp)
         print("Secure Channel is UP !")
         Menu()
     except Exception as e:
@@ -110,7 +102,6 @@ def main():
         print("Starting Client...")
         [_, dc_name, account_name, account_password, dc_ip] = sys.argv
         computer_name = socket.gethostname()
-        #account_password = account_password.upper()
         dc_name = "\\\\" + dc_name
         print("DC Name : ", dc_name)
         print("DC IP : ", dc_ip)
