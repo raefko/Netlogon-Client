@@ -7,7 +7,7 @@ from subprocess import check_call
 from datetime import datetime
 from struct import pack, unpack
 
-import hmac, hashlib, struct, sys, socket, time, itertools, uuid, binascii, time
+import hmac, hashlib, struct, sys, socket, time, itertools, uuid, binascii, time, random
 
 class userlog:
     def __init__(self, dc_name, computer_name, account_name, account_password, dc_ip):
@@ -55,8 +55,9 @@ def Menu():
         sys.exit(1)
 
 def authenticate(rpc_con, user):
-    Client_Challenge = uuid.uuid4().hex.encode()
-    status = nrpc.hNetrServerReqChallenge(rpc_con, user.dc_name + '\x00', user.computer_name + '\x00', Client_Challenge)
+    Client_Challenge = bytes(random.getrandbits(8) for i in range(8))
+    #print(len(Client_Challenge))
+    status = nrpc.hNetrServerReqChallenge(rpc_con, NULL, user.computer_name + '\x00', Client_Challenge)
     if (status == None or status['ErrorCode'] != 0):
         fail(f'Error NetrServerReqChallenge')
     else:
@@ -65,18 +66,19 @@ def authenticate(rpc_con, user):
         print("Client_Challenge : ", Client_Challenge)
         print("Server_Challenge : ", Server_Challenge)
     #pwd = hashlib.new('md4', user.account_password.encode('utf-16le')).digest()
-    SessionKey = nrpc.ComputeSessionKeyAES(user.account_password, Client_Challenge, Server_Challenge)
+    SessionKey = nrpc.ComputeSessionKeyAES(user.account_password, Client_Challenge, Server_Challenge, bytearray.fromhex(user.account_password))
+    #SessionKey = nrpc.ComputeSessionKeyAES(user.account_password, Client_Challenge, Server_Challenge, bytearray.fromhex(user.account_password))
     print("Session_Key : ", SessionKey)
     Credential = nrpc.ComputeNetlogonCredentialAES(Client_Challenge, SessionKey)
     print("Credential : ", Credential)
     negotiateFlags = 0x212fffff
     try:
         resp = nrpc.hNetrServerAuthenticate3(rpc_con, user.dc_name + '\x00', user.account_name  + '\x00',
-        nrpc.NETLOGON_SECURE_CHANNEL_TYPE.ServerSecureChannel, user.computer_name + '\x00', Credential, negotiateFlags)
+        nrpc.NETLOGON_SECURE_CHANNEL_TYPE.WorkstationSecureChannel, user.computer_name + '\x00', Credential, negotiateFlags)
         #print(resp)
-        StoredCredential = pack('<Q', unpack('<Q', Credential)[0] + 10)
         #print(StoredCredential)
-        Authenticator = ComputeNetlogonAuthenticator(StoredCredential, SessionKey)
+        Authenticator = ComputeNetlogonAuthenticator(Credential, SessionKey)
+
         #print(authenticator)
         resp = nrpc.hNetrLogonGetCapabilities(rpc_con, user.dc_name, user.computer_name, Authenticator)
         #print(resp)
@@ -101,13 +103,14 @@ def InitiateSecureChannel(user):
 
 def main():
     if (len(sys.argv) != 5):
-        print('Usage: netlogon_client.py <dc-name> <account_name> <account_password> <dc-ip>\n')
+        print('Usage: netlogon_client.py <dc-name> <account_name> <account_password_hash> <dc-ip>\n')
         print('Note: dc-name should be the (NetBIOS) computer name of the domain controller.')
         sys.exit(1)
     else:
         print("Starting Client...")
         [_, dc_name, account_name, account_password, dc_ip] = sys.argv
         computer_name = socket.gethostname()
+        #account_password = account_password.upper()
         dc_name = "\\\\" + dc_name
         print("DC Name : ", dc_name)
         print("DC IP : ", dc_ip)
