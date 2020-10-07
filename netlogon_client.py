@@ -9,6 +9,41 @@ from struct import pack, unpack
 
 import hmac, hashlib, struct, sys, socket, time, itertools, uuid, binascii, time, random
 
+
+options = { 0: ["ComputeNetlogonCredential",nrpc.ComputeNetlogonCredential],
+            1: ["ComputeNetlogonCredentialAES",nrpc.ComputeNetlogonCredentialAES],
+            2: ["ComputeSessionKeyAES",nrpc.ComputeSessionKeyAES],
+            3: ["ComputeSessionKeyStrongKey",nrpc.ComputeSessionKeyStrongKey],
+            4: ["deriveSequenceNumber",nrpc.deriveSequenceNumber],
+            5: ["ComputeNetlogonSignatureAES",nrpc.ComputeNetlogonSignatureAES],
+            6: ["ComputeNetlogonSignatureMD5",nrpc.ComputeNetlogonSignatureMD5],
+            7: ["encryptSequenceNumberRC4",nrpc.encryptSequenceNumberRC4],
+            8: ["decryptSequenceNumberRC4",nrpc.decryptSequenceNumberRC4],
+            9: ["encryptSequenceNumberAES",nrpc.encryptSequenceNumberAES],
+            10: ["decryptSequenceNumberAES",nrpc.decryptSequenceNumberAES],
+            11: ["SIGN",nrpc.SIGN],
+            12: ["SEAL",nrpc.SEAL],
+            13: ["UNSEAL",nrpc.UNSEAL],
+            14: ["getSSPType1",nrpc.getSSPType1],
+            15: ["checkNullString",nrpc.checkNullString],
+            16: ["hNetrServerReqChallenge",nrpc.hNetrServerReqChallenge],
+            17: ["hNetrServerAuthenticate3",nrpc.hNetrServerAuthenticate3],
+            18: ["hDsrGetDcNameEx2",nrpc.hDsrGetDcNameEx2],
+            19: ["hDsrGetDcNameEx",nrpc.hDsrGetDcNameEx],
+            20: ["hDsrGetDcName",nrpc.hDsrGetDcName],
+            21: ["hNetrGetAnyDCName",nrpc.hNetrGetAnyDCName],
+            22: ["hNetrGetDCName",nrpc.hNetrGetDCName],
+            23: ["hDsrGetSiteName",nrpc.hDsrGetSiteName],
+            24: ["hDsrGetDcSiteCoverageW",nrpc.hDsrGetDcSiteCoverageW],
+            25: ["hNetrServerAuthenticate2",nrpc.hNetrServerAuthenticate2],
+            26: ["hNetrServerAuthenticate",nrpc.hNetrServerAuthenticate],
+            27: ["hNetrServerPasswordGet",nrpc.hNetrServerPasswordGet],
+            28: ["hNetrServerTrustPasswordsGet",nrpc.hNetrServerTrustPasswordsGet],
+            29: ["hNetrServerPasswordSet2",nrpc.hNetrServerPasswordSet2],
+            30: ["hNetrLogonGetDomainInfo",nrpc.hNetrLogonGetDomainInfo],
+            31: ["hNetrLogonGetCapabilities",nrpc.hNetrLogonGetCapabilities],
+            32: ["hNetrServerGetTrustInfo",nrpc.hNetrServerGetTrustInfo]
+        }
 class userlog:
     def __init__(self, dc_name, computer_name, account_name, account_password, dc_ip):
         self.dc_name = dc_name
@@ -48,9 +83,10 @@ def ComputeNetlogonAuthenticator(Credential, SessionKey):
 
 def Menu():
     while(True):
-        print("         __Netlogon_Client__")
+        print("\n \n         __Netlogon_Client__")
         print("_________________________________________")
         #fixme add menu to call netlogon functions
+        print("\n".join([str(i) + " " + options[i][0] for i in range(len(options))]))
         inp = input("Press a key")
         sys.exit(1)
 
@@ -68,7 +104,7 @@ def authenticate(rpc_con, user):
     print("Session_Key : ", SessionKey)
     Credential = nrpc.ComputeNetlogonCredentialAES(Client_Challenge, SessionKey)
     print("Credential : ", Credential)
-    negotiateFlags = 0x212fffff
+    negotiateFlags = 0x612fffff
     try:
         resp = nrpc.hNetrServerAuthenticate3(rpc_con, user.dc_name + '\x00', user.account_name  + '\x00',
         nrpc.NETLOGON_SECURE_CHANNEL_TYPE.WorkstationSecureChannel, user.computer_name + '\x00', Credential, negotiateFlags)
@@ -99,7 +135,7 @@ def main():
         print('Note: dc-name should be the (NetBIOS) computer name of the domain controller.')
         sys.exit(1)
     else:
-        print("Starting Client...")
+        print("\n \n         __Starting Client__")
         [_, dc_name, account_name, account_password, dc_ip] = sys.argv
         computer_name = socket.gethostname()
         dc_name = "\\\\" + dc_name
