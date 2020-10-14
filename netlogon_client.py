@@ -55,11 +55,6 @@ def handler(signal_received, frame):
     print('SIGINT or CTRL-C detected. Exiting gracefully')
     sys.exit()
 
-def handler(signal_received, frame):
-    # Handle any cleanup here
-    print('SIGINT or CTRL-C detected. Exiting gracefully')
-    sys.exit()
-
 def fail(msg):
     print(msg, file=sys.stderr)
     sys.exit(2)
