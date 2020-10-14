@@ -9,12 +9,20 @@ from struct import pack, unpack
 from inspect import signature
 from signal import signal, SIGINT
 from sys import exit
+<<<<<<< HEAD
 from userlog import userlog
+=======
+>>>>>>> 929bf8996632133776a0c8bcd497fe1976cff989
 
 import hmac, hashlib, struct, sys, socket, time, itertools, uuid, binascii
 import time, random, os
 
+<<<<<<< HEAD
 options = {
+=======
+
+options = { 
+>>>>>>> 929bf8996632133776a0c8bcd497fe1976cff989
     0:  ["Leave the program"],
     1:  ["ComputeNetlogonCredential", nrpc.ComputeNetlogonCredential],
     2:  ["ComputeNetlogonCredentialAES", nrpc.ComputeNetlogonCredentialAES],
@@ -50,6 +58,22 @@ options = {
     32: ["hNetrLogonGetCapabilities",nrpc.hNetrLogonGetCapabilities],
     33: ["hNetrServerGetTrustInfo",nrpc.hNetrServerGetTrustInfo]
     }
+<<<<<<< HEAD
+def handler(signal_received, frame):
+    # Handle any cleanup here
+    print('SIGINT or CTRL-C detected. Exiting gracefully')
+    sys.exit()
+=======
+class userlog:
+    def __init__(self, dc_name, computer_name, account_name, account_password,
+                                                                        dc_ip):
+        self.dc_name = dc_name
+        self.computer_name = computer_name
+        self.account_name = account_name
+        self.account_password = account_password
+        self.dc_ip = dc_ip
+>>>>>>> 929bf8996632133776a0c8bcd497fe1976cff989
+
 def handler(signal_received, frame):
     # Handle any cleanup here
     print('SIGINT or CTRL-C detected. Exiting gracefully')
@@ -62,10 +86,15 @@ def fail(msg):
 def ConnectRPCServer(dc_ip):
     rpc_con = None
     try :
+<<<<<<< HEAD
         binding = epm.hept_map(
             dc_ip,
             nrpc.MSRPC_UUID_NRPC,
             protocol='ncacn_ip_tcp')
+=======
+        binding = epm.hept_map(dc_ip, nrpc.MSRPC_UUID_NRPC,
+                                                protocol='ncacn_ip_tcp')
+>>>>>>> 929bf8996632133776a0c8bcd497fe1976cff989
         rpc_con = transport.DCERPCTransportFactory(binding).get_dce_rpc()
         rpc_con.connect()
         rpc_con.bind(nrpc.MSRPC_UUID_NRPC)
@@ -85,7 +114,11 @@ def ComputeNetlogonAuthenticator(Credential, SessionKey):
                                                                 SessionKey)
     Authenticator['Credential'] = CredentialAuthenticator
     Authenticator['Timestamp'] = seconds
+<<<<<<< HEAD
     return Authenticator
+=======
+    return Authenticator 
+>>>>>>> 929bf8996632133776a0c8bcd497fe1976cff989
 """
 
 def Menu():
@@ -117,6 +150,7 @@ def Menu():
                     args += (inputParam,)
                 res = options[inp][1](*args)
                 print(res)
+<<<<<<< HEAD
                 input()
 
 def authenticate(rpc_con, user):
@@ -126,6 +160,14 @@ def authenticate(rpc_con, user):
         NULL,
         user.computer_name + '\x00',
         Client_Challenge)
+=======
+                input()        
+
+def authenticate(rpc_con, user):
+    Client_Challenge = bytes(random.getrandbits(8) for i in range(8))
+    status = nrpc.hNetrServerReqChallenge(rpc_con, NULL,
+                            user.computer_name + '\x00', Client_Challenge)
+>>>>>>> 929bf8996632133776a0c8bcd497fe1976cff989
     if (status == None or status['ErrorCode'] != 0):
         fail(f'Error NetrServerReqChallenge')
     else:
@@ -133,16 +175,23 @@ def authenticate(rpc_con, user):
         Server_Challenge = status['ServerChallenge']
         print("Client_Challenge : ", Client_Challenge)
         print("Server_Challenge : ", Server_Challenge)
+<<<<<<< HEAD
     SessionKey = nrpc.ComputeSessionKeyAES(
         user.account_password,
         Client_Challenge,
         Server_Challenge,
         bytearray.fromhex(user.account_password))
+=======
+    SessionKey = nrpc.ComputeSessionKeyAES(user.account_password,
+                                    Client_Challenge, Server_Challenge,
+                                    bytearray.fromhex(user.account_password))
+>>>>>>> 929bf8996632133776a0c8bcd497fe1976cff989
     print("Session_Key : ", SessionKey)
     Credential = nrpc.ComputeNetlogonCredentialAES(Client_Challenge, SessionKey)
     print("Credential : ", Credential)
     negotiateFlags = 0x612fffff
     try:
+<<<<<<< HEAD
         resp = nrpc.hNetrServerAuthenticate3(
             rpc_con, user.dc_name + '\x00',
             user.account_name  + '\x00',
@@ -156,6 +205,17 @@ def authenticate(rpc_con, user):
             user.dc_name,
             user.computer_name,
             Authenticator)
+=======
+        resp = nrpc.hNetrServerAuthenticate3(rpc_con, user.dc_name + '\x00',
+        user.account_name  + '\x00',
+        nrpc.NETLOGON_SECURE_CHANNEL_TYPE.WorkstationSecureChannel, 
+        user.computer_name + '\x00', Credential, negotiateFlags)
+
+        Authenticator = nrpc.ComputeNetlogonAuthenticator(Credential, SessionKey)
+        resp = nrpc.hNetrLogonGetCapabilities(rpc_con, user.dc_name,
+                                            user.computer_name, Authenticator)
+
+>>>>>>> 929bf8996632133776a0c8bcd497fe1976cff989
         print("Secure Channel is UP !")
         Menu()
     except Exception as e:
@@ -195,12 +255,17 @@ def main():
         print("Account Name : ", account_name)
         print("Account Password : ", account_password)
         print("Initiate Secure Channel ...")
+<<<<<<< HEAD
         user = userlog(
             dc_name,
             computer_name,
             account_name,
             account_password,
             dc_ip)
+=======
+        user = userlog(dc_name, computer_name, account_name, account_password,
+                                                                        dc_ip)
+>>>>>>> 929bf8996632133776a0c8bcd497fe1976cff989
         InitiateSecureChannel(user)
 
 if __name__ == '__main__':
