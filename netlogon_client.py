@@ -10,6 +10,7 @@ from inspect import signature
 from signal import signal, SIGINT
 from sys import exit
 from userlog import userlog
+from dumb_fuzz import dumbfuzz
 
 import hmac, hashlib, struct, sys, socket, time, itertools, uuid, binascii
 import time, random, os
@@ -25,7 +26,7 @@ options = {
     7:  ["ComputeNetlogonSignatureMD5", nrpc.ComputeNetlogonSignatureMD5],
     8:  ["encryptSequenceNumberRC4", nrpc.encryptSequenceNumberRC4],
     9:  ["decryptSequenceNumberRC4", nrpc.decryptSequenceNumberRC4],
-    10:  ["encryptSequenceNumberAES", nrpc.encryptSequenceNumberAES],
+    10: ["encryptSequenceNumberAES", nrpc.encryptSequenceNumberAES],
     11: ["decryptSequenceNumberAES", nrpc.decryptSequenceNumberAES],
     12: ["SIGN", nrpc.SIGN],
     13: ["SEAL", nrpc.SEAL],
@@ -50,29 +51,14 @@ options = {
     32: ["hNetrLogonGetCapabilities",nrpc.hNetrLogonGetCapabilities],
     33: ["hNetrServerGetTrustInfo",nrpc.hNetrServerGetTrustInfo]
     }
+
 def handler(signal_received, frame):
-    # Handle any cleanup here
     print('SIGINT or CTRL-C detected. Exiting gracefully')
     sys.exit()
 
 def fail(msg):
     print(msg, file=sys.stderr)
     sys.exit(2)
-
-def ConnectRPCServer(dc_ip):
-    rpc_con = None
-    try :
-        binding = epm.hept_map(
-            dc_ip,
-            nrpc.MSRPC_UUID_NRPC,
-            protocol='ncacn_ip_tcp')
-        rpc_con = transport.DCERPCTransportFactory(binding).get_dce_rpc()
-        rpc_con.connect()
-        rpc_con.bind(nrpc.MSRPC_UUID_NRPC)
-    except:
-        print("Unexpected error:", sys.exc_info()[0])
-        raise
-    return rpc_con
 
 """
 #Send a Pull Request to impacket lib to add this function in the library
@@ -88,7 +74,7 @@ def ComputeNetlogonAuthenticator(Credential, SessionKey):
     return Authenticator
 """
 
-def Menu():
+def Menu(user):
     loop = True
     while(loop):
         print("\n\n         __Netlogon_Client__")
@@ -112,7 +98,8 @@ def Menu():
                 print("Function : " + options[inp][0])
                 print("Parameters : " + str(sig))
                 args = ()
-                for param in list(sig.parameters):
+                print(sig.parameters)
+                for _ in list(sig.parameters):
                     inputParam = input("param... ")
                     args += (inputParam,)
                 res = options[inp][1](*args)
@@ -143,7 +130,7 @@ def authenticate(rpc_con, user):
     print("Credential : ", Credential)
     negotiateFlags = 0x612fffff
     try:
-        resp = nrpc.hNetrServerAuthenticate3(
+        _ = nrpc.hNetrServerAuthenticate3(
             rpc_con, user.dc_name + '\x00',
             user.account_name  + '\x00',
             nrpc.NETLOGON_SECURE_CHANNEL_TYPE.WorkstationSecureChannel,
@@ -151,15 +138,30 @@ def authenticate(rpc_con, user):
         Authenticator = nrpc.ComputeNetlogonAuthenticator(
             Credential,
             SessionKey)
-        resp = nrpc.hNetrLogonGetCapabilities(
+        _ = nrpc.hNetrLogonGetCapabilities(
             rpc_con,
             user.dc_name,
             user.computer_name,
             Authenticator)
         print("Secure Channel is UP !")
-        Menu()
+        Menu(user)
     except Exception as e:
         fail(f'Unexpected error code from DC: {e}.')
+
+def ConnectRPCServer(dc_ip):
+    rpc_con = None
+    try :
+        binding = epm.hept_map(
+            dc_ip,
+            nrpc.MSRPC_UUID_NRPC,
+            protocol='ncacn_ip_tcp')
+        rpc_con = transport.DCERPCTransportFactory(binding).get_dce_rpc()
+        rpc_con.connect()
+        rpc_con.bind(nrpc.MSRPC_UUID_NRPC)
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
+        raise
+    return rpc_con
 
 def InitiateSecureChannel(user):
     rpc_con = ConnectRPCServer(user.dc_ip)
