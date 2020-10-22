@@ -95,28 +95,53 @@ def Menu(user):
             except:
                 print("Enter a valid number... ")
             else:
-                print("Function : " + options[inp][0])
-                print("Parameters : " + str(sig))
+                print("Function : " + options[inp][0] + "\n" +
+                        "Parameters : " + str(sig) )
                 args = ()
-                print(sig.parameters)
-                for _ in list(sig.parameters):
+                print(str(sig.parameters) + "\n\nTo use user parameter enter :")
+                userClass = list(vars(user))
+                print("\n".join([str(i) + " " + userClass[i] for i
+                                                    in range(len(userClass))]))
+                end = 0
+                while (len(list(sig.parameters)) != end):
                     inputParam = input("param... ")
-                    args += (inputParam,)
+                    if (inputParam == "skip."):
+                        end += 1
+                        continue
+                    if ("user." in inputParam):
+                        split = inputParam.split("user.")[1]
+                        if (split not in userClass):
+                            print("Error <" + split + "> not found in\
+                                User class.")
+                            continue
+                        else:
+                            end += 1
+                            args += (getattr(user, split),)
+                            print(args)
+                    else:
+                        end += 1
+                        args += (inputParam,)
                 res = options[inp][1](*args)
-                print(res)
+                try:
+                    user.UpdateAuthenticator(res["ReturnAuthenticator"]\
+                                                        ["Credential"])
+                    print("\n\nAuthenticator's Credential updated\n\n")
+                except:
+                    print("\n\nAuthenticator's Credential NOT updated\n\n")
+                print(res.dump())
                 input()
+                os.system("clear")
 
-def authenticate(rpc_con, user):
+def authenticate(user):
     Client_Challenge = bytes(random.getrandbits(8) for i in range(8))
     status = nrpc.hNetrServerReqChallenge(
-        rpc_con,
+        user.rpc,
         NULL,
         user.computer_name + '\x00',
         Client_Challenge)
     if (status == None or status['ErrorCode'] != 0):
         fail(f'Error NetrServerReqChallenge')
     else:
-        #status.dump()
         Server_Challenge = status['ServerChallenge']
         print("Client_Challenge : ", Client_Challenge)
         print("Server_Challenge : ", Server_Challenge)
@@ -125,24 +150,32 @@ def authenticate(rpc_con, user):
         Client_Challenge,
         Server_Challenge,
         bytearray.fromhex(user.account_password))
+    user.SetSessionKey(SessionKey)
     print("Session_Key : ", SessionKey)
     Credential = nrpc.ComputeNetlogonCredentialAES(Client_Challenge, SessionKey)
     print("Credential : ", Credential)
     negotiateFlags = 0x612fffff
     try:
-        _ = nrpc.hNetrServerAuthenticate3(
-            rpc_con, user.dc_name + '\x00',
+        test = nrpc.hNetrServerAuthenticate3(
+            user.rpc, user.dc_name + '\x00',
             user.account_name  + '\x00',
             nrpc.NETLOGON_SECURE_CHANNEL_TYPE.WorkstationSecureChannel,
             user.computer_name + '\x00', Credential, negotiateFlags)
         Authenticator = nrpc.ComputeNetlogonAuthenticator(
             Credential,
             SessionKey)
-        _ = nrpc.hNetrLogonGetCapabilities(
-            rpc_con,
+        user.SetAuthenticator(Authenticator)
+        getCapabilities = nrpc.hNetrLogonGetCapabilities(
+            user.rpc,
             user.dc_name,
             user.computer_name,
             Authenticator)
+        getCapabilities.dump()
+        serverCapabilities = getCapabilities["ServerCapabilities"]\
+                                            ["ServerCapabilities"]
+        user.UpdateAuthenticator(getCapabilities["ReturnAuthenticator"]\
+                                             ["Credential"])
+        print("Server Capabilities : " + str(serverCapabilities))
         print("Secure Channel is UP !")
         Menu(user)
     except Exception as e:
@@ -166,7 +199,8 @@ def ConnectRPCServer(dc_ip):
 def InitiateSecureChannel(user):
     rpc_con = ConnectRPCServer(user.dc_ip)
     try :
-        authenticate(rpc_con, user)
+        user.SetRPC(rpc_con)
+        authenticate(user)
     except nrpc.DCERPCSessionError as ex:
         # Failure should be due to a STATUS_ACCESS_DENIED error.
         if ex.get_error_code() == 0xc0000022:
