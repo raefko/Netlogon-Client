@@ -10,7 +10,6 @@ from inspect import signature
 from signal import signal, SIGINT
 from sys import exit
 from userlog import userlog
-from dumb_fuzz import dumbfuzz
 
 import hmac, hashlib, struct, sys, socket, time, itertools, uuid, binascii
 import time, random, os
@@ -96,11 +95,14 @@ def Menu(user):
                 print("Enter a valid number... ")
             else:
                 print("Function : " + options[inp][0] + "\n" +
-                        "Parameters : " + str(sig) )
+                        "Parameters : " + str(sig) + "\n")
                 args = ()
-                print(str(sig.parameters) + "\n\nTo use user parameter enter :")
+                paramSignatures = list(sig.parameters.items())
+                print("\n".join([str(paramSignatures[i]) for i
+                                            in range(len(paramSignatures))]))
+                print("\n\nTo use user's attributes enter :")
                 userClass = list(vars(user))
-                print("\n".join([str(i) + " " + userClass[i] for i
+                print("\n".join(["- user." + str(userClass[i]) for i
                                                     in range(len(userClass))]))
                 end = 0
                 while (len(list(sig.parameters)) != end):
@@ -156,7 +158,7 @@ def authenticate(user):
     print("Credential : ", Credential)
     negotiateFlags = 0x612fffff
     try:
-        test = nrpc.hNetrServerAuthenticate3(
+        _ = nrpc.hNetrServerAuthenticate3(
             user.rpc, user.dc_name + '\x00',
             user.account_name  + '\x00',
             nrpc.NETLOGON_SECURE_CHANNEL_TYPE.WorkstationSecureChannel,
@@ -170,7 +172,6 @@ def authenticate(user):
             user.dc_name,
             user.computer_name,
             Authenticator)
-        getCapabilities.dump()
         serverCapabilities = getCapabilities["ServerCapabilities"]\
                                             ["ServerCapabilities"]
         user.UpdateAuthenticator(getCapabilities["ReturnAuthenticator"]\
@@ -230,7 +231,7 @@ def main():
         print("Computer Name : ", computer_name)
         print("Account Name : ", account_name)
         print("Account Password : ", account_password)
-        print("Initiate Secure Channel ...")
+        print("\nInitiate Secure Channel ...\n")
         user = userlog(
             dc_name,
             computer_name,
